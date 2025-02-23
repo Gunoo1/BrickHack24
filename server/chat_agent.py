@@ -149,18 +149,24 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+def render_block_latex(latex_expr):
+    print(f"Block latex expression: {latex_expr}")
+    st.latex(latex_expr)
+    return ""
+
 def reformat_latex(latex_expr):
     # Render block LaTeX
+    print(f"Reformat latex expression: {latex_expr}")
     return f"${latex_expr}$"  # Remove the original LaTeX from markdown output
 
 def render_mixed_content(content):
 
         # Pattern to detect LaTeX expressions inside \( ... \)
     inline_pattern = r'\\\((.*?)\\\)'
-    block_pattern = r'\\\[(.*?)\\\]'
+    block_pattern = r'\\\[.(.*?).\\\]'
 
     # First handle block LaTeX expressions
-    content = re.sub(block_pattern, lambda m: reformat_latex(m.group(1)), content)
+    content = re.sub(block_pattern, lambda m: reformat_latex(m.group(1)), content, flags=re.DOTALL)
 
     # Then handle inline LaTeX expressions
     content = re.sub(inline_pattern, lambda m: reformat_latex(m.group(1)), content)

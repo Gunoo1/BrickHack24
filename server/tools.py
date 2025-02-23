@@ -1,3 +1,5 @@
+import cv2
+import numpy as np
 from langchain_core.tools import tool
 from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip
 from langchain_community.tools import TavilySearchResults
@@ -10,6 +12,99 @@ import subprocess
 from environ import secrets
 secrets()
 from generated_video_code import integral_visualization
+import fitz  # PyMuPDF
+from PIL import Image, ImageDraw, ImageFont, ImageGrab
+from streamlit_webrtc import webrtc_streamer, AudioProcessorBase
+import av
+from reportlab.pdfgen import canvas
+
+@tool()
+def explain_screenshot():
+    """
+    Generate a list of steps to complete the math problem on a screenshot
+    """
+
+@tool("take_screenshot")
+def take_screenshot():
+    """
+    Take a screenshot of the user's math problem, crop the image to where the user drew a red box, and save the image.
+    """
+    screenshot = ImageGrab.grab()
+
+def crop_screenshot(screenshot):
+    x, y, w, h = detect_red_rectangle(screenshot)
+
+def detect_red_rectangle(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    lower_red = np.array([0, 100, 100])
+    upper_red = np.array([10, 255, 255])
+    mask1 = cv2.inRange(hsv, lower_red, upper_red)
+
+    lower_red = np.array([170, 100, 100])
+    upper_red = np.array([180, 255, 255])
+    mask2 = cv2.inRange(hsv, lower_red, upper_red)
+
+    mask = mask1 + mask2
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
+                                   cv2.CHAIN_APPROX_SIMPLE)
+
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        return x, y, w, h
+    return None
+
+@tool("handwrite_on_pdf")
+def handwrite_on_pdf(file_path: str = None, output_path: str = "handwritten_output.pdf", text: str = "Hello!",
+                     x: int = 100, y: int = 100, font_path: str = "handwriting_font.ttf", font_size: int = 36):
+    """
+    Simulate handwriting on a PDF using a handwriting font.
+
+    Args:
+        file_path (str, optional): Path to existing PDF. Creates a new PDF if None.
+        output_path (str): Path to save the modified PDF.
+        text (str): Text to simulate as handwritten.
+        x, y (int): Coordinates to place the text.
+        font_path (str): Path to handwriting font (e.g., .ttf file).
+        font_size (int): Size of the handwritten text.
+    """
+    try:
+        print(text)
+        print(output_path)
+
+        # Create or open PDF
+        if file_path:
+            pdf = fitz.open(file_path)
+            page = pdf[0]
+        else:
+            pdf = fitz.open()
+            page = pdf.new_page()
+
+        # Create handwritten text image
+        font = ImageFont.truetype(font_path, font_size)
+        image = Image.new("RGBA", (800, 200), (255, 255, 255, 0))
+        draw = ImageDraw.Draw(image)
+        draw.text((10, 10), text, font=font, fill=(0, 0, 0))
+
+        # Save image temporarily
+        temp_image_path = f"input_pdf\\temp_handwriting.png"
+        image.save(temp_image_path)
+
+        # Insert image into PDF
+        rect = fitz.Rect(x, y, x + image.width, y + image.height)
+        page.insert_image(rect, filename=temp_image_path)
+
+        # Save PDF
+        pdf.save(f"generated_pdf\\{output_path}")
+        pdf.close()
+
+        return f"Handwritten text added to PDF and saved to {output_path}"
+
+    except Exception as e:
+        return f"Error while handwriting on PDF: {str(e)}"
+
 
 def add_audio_to_video(video_path, audio_path, output_path):
     """
@@ -64,8 +159,9 @@ def write_script(file_name: str, script: str):
     """Write and save the python script for generating the manim animation. The script must be in proper python syntax for it to work
     Use Reference example: class IntegralVisualization
     THIS IS IMPORTANT: When writing script write the self.play for the title like: self.play(title.animate.to_edge(UP))
-
-
+    When using "\theta" in any text, make sure you use "\\theta" instead because python will interpret "\t" as a tab
+    Also make sure you run into no manim errors or latex errors, take your time and write the code carefully and step by step
+    Also when making latex like Tex("if $\gcd(a, n) = 1$") add a r in front of the string like Tex(r"if $...")
 
   """
 
@@ -176,4 +272,4 @@ def run_script(file_name: str, script_class: str, audio_file: str):
 
 TAVILY_TOOL = TavilySearchResults(max_results=10, tavily_api_key=os.environ['TAVILY_API_KEY'])
 
-TOOLS = [TAVILY_TOOL,write_script, run_script, make_tts_explanation]
+TOOLS = [TAVILY_TOOL,write_script, run_script, make_tts_explanation, handwrite_on_pdf]

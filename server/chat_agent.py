@@ -1,7 +1,7 @@
 import io
 import os
 from errno import ECHILD
-
+import re
 import streamlit as st
 from langchain_core.messages import AIMessage
 import speech_recognition as sr
@@ -77,6 +77,7 @@ agent = workflow.compile()
 printed_messages = set()
 
 st.title("WHaKBot")
+st.button("Take Screenshot")
 if "openai_model" not in st.session_state:
     st.session_state["openai_model"] = "gpt-4o"
 
@@ -92,7 +93,20 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+def render_mixed_content(content):
+    # Pattern to detect LaTeX expressions inside [ ... ]
+    pattern = r'\[([^\]]+)\]'
 
+    # Split the content based on the LaTeX pattern
+    parts = re.split(pattern, content)
+
+    for idx, part in enumerate(parts):
+        if idx % 2 == 0:
+            # Regular text
+            st.markdown(part, unsafe_allow_html=True)
+        else:
+            # LaTeX expression
+            st.latex(part.strip())
 # Accept user input
 if prompt := st.chat_input("Enter input"):
     # Add user message to chat history
@@ -100,7 +114,7 @@ if prompt := st.chat_input("Enter input"):
 
     # Display user message in chat message container
     with st.chat_message("user"):
-        st.markdown(prompt)
+        render_mixed_content(r"{}".format(prompt))
 
     # Prepare the messages for the assistant model
     messages = st.session_state.messages
@@ -138,7 +152,7 @@ if prompt := st.chat_input("Enter input"):
             msg_repr = msg_repr[:2000] + " ... (truncated)"
 
         with st.chat_message("assistant"):
-            st.markdown(msg_repr)
+            render_mixed_content(r"{}".format(msg_repr))
 
 
     except Exception as e:

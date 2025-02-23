@@ -1,5 +1,11 @@
+import base64
+from mimetypes import guess_type
+
+import PIL
 import cv2
 import numpy as np
+from langchain_core.messages import HumanMessage
+from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip
 from langchain_community.tools import TavilySearchResults
@@ -17,25 +23,77 @@ from PIL import Image, ImageDraw, ImageFont, ImageGrab
 from streamlit_webrtc import webrtc_streamer, AudioProcessorBase
 import av
 from reportlab.pdfgen import canvas
+from matplotlib import pyplot as plt
 
-@tool()
-def explain_screenshot():
+image_summarizer_model = ChatOpenAI(model="gpt-4o-mini", temperature=.7, api_key = os.environ["OPENAI_API_KEY"])
+
+def generate_math_summary(image_url):
+    prompt = "Explain this math-related photo in detail. Be sure to list any important values than can be used to solve to problem in the photo."
+    # Create a message with the image
+    message = image_summarizer_model.invoke([HumanMessage(
+        content=[{"type": "text", "text": prompt},
+                 {"type": "image_url", "image_url": {"url": image_url}, }])])
+
+    return message.content
+
+# Function to encode a local image into data URL
+def local_image_to_data_url(image_path):
+    mime_type, _ = guess_type(image_path)
+    # Default to png
+    if mime_type is None:
+        mime_type = 'image/png'
+
+    # Read and encode the image file
+    with open(image_path, "rb") as image_file:
+        base64_encoded_data = base64.b64encode(image_file.read()).decode(
+            'utf-8')
+
+    # Construct the data URL
+    return f"data:{mime_type};base64,{base64_encoded_data}"
+
+@tool("list_problem_solving_steps")
+def list_problem_solving_steps(problem_description):
     """
     Generate a list of steps to complete the math problem on a screenshot
     """
+    pass
+
 
 @tool("take_screenshot")
-def take_screenshot():
+def take_screenshot(issue: str):
     """
-    Take a screenshot of the user's math problem, crop the image to where the user drew a red box, and save the image.
+    Take a screenshot of the user's math problem and get a summary of the problem.
     """
     screenshot = ImageGrab.grab()
+    # Save screenshot temporarily
+    temp_image_path = r"screenshot/problem.png"
+    screenshot.save(temp_image_path)
 
-def crop_screenshot(screenshot):
+    # Save cropped version temporarily
+    temp_cropped_path = r"screenshot/problem_cropped.png"
+    cropped_image = crop_screenshot(temp_image_path)
+    cropped_image = PIL.Image.fromarray(cropped_image) # Convert from cv2 format to PIL
+
+    cropped_image.save(temp_cropped_path)
+
+
+    cropped_image_data_url = local_image_to_data_url(temp_cropped_path)
+    print("ANALYZING IMAGE...")
+    return "Problem description: " + generate_math_summary(cropped_image_data_url)
+
+
+def crop_screenshot(image_path):
+    screenshot = cv2.imread(image_path)
+    #Convert image to rgb
+    screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGR2RGB)
+    print(type(screenshot))
+    plt.imshow(screenshot)
+    plt.show()
     x, y, w, h = detect_red_rectangle(screenshot)
+    return screenshot[y:y+h, x:x+w]
 
 def detect_red_rectangle(image):
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
 
     lower_red = np.array([0, 100, 100])
     upper_red = np.array([10, 255, 255])
@@ -50,11 +108,17 @@ def detect_red_rectangle(image):
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
                                    cv2.CHAIN_APPROX_SIMPLE)
 
+    max_area = 0
+    largest_contour = 0, 0, 0, 0
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
-        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        return x, y, w, h
-    return None
+        area = w * h
+        if area > max_area:
+            max_area = area
+            largest_contour = x, y, w, h
+
+    return largest_contour
+
 
 @tool("handwrite_on_pdf")
 def handwrite_on_pdf(file_path: str = None, output_path: str = "handwritten_output.pdf", text: str = "Hello!",
@@ -272,4 +336,4 @@ def run_script(file_name: str, script_class: str, audio_file: str):
 
 TAVILY_TOOL = TavilySearchResults(max_results=10, tavily_api_key=os.environ['TAVILY_API_KEY'])
 
-TOOLS = [TAVILY_TOOL,write_script, run_script, make_tts_explanation, handwrite_on_pdf]
+TOOLS = [TAVILY_TOOL,write_script, run_script, make_tts_explanation, handwrite_on_pdf, take_screenshot]

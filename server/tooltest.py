@@ -1,7 +1,12 @@
+import base64
 
+import cv2
+from PIL import ImageGrab
 from langchain_core.tools import tool
 from moviepy import VideoFileClip, AudioFileClip, CompositeVideoClip
 from langchain_community.tools import TavilySearchResults
+from openai import OpenAI
+
 from pydantic import BaseModel, Field
 import os
 import requests
@@ -9,10 +14,10 @@ import pyttsx3
 import time
 import subprocess
 from environ import secrets
-from server.tools import add_audio_to_video
+from server.tools import add_audio_to_video, crop_screenshot, \
+    generate_math_summary, take_screenshot
 
 secrets()
-
 
 def run_script(file_name: str, script_class: str, audio_file: str):
     """run the manim script you just made. To use this tool, input the file name the write_script tool just made and nothing else. You also need to input the main class that runs the whole scene"""
@@ -71,4 +76,7 @@ def run_script(file_name: str, script_class: str, audio_file: str):
         return {"status": "error", "message": str(e)}
 #run_script('integral_visualization.py', 'IntegralVisualization', 'integral.mp3')
 #run_script('eulers_theorem_fixed.py', 'EulerTheoremFixed', 'eulers_theorem.mp3')
-run_script('RiemannSumVisualization.py', 'RiemannSumVisualization', 'RiemannSum.mp3')
+# run_script('RiemannSumVisualization.py', 'RiemannSumVisualization', 'RiemannSum.mp3')
+print(take_screenshot(""))
+
+

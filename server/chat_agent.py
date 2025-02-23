@@ -76,6 +76,33 @@ workflow.add_edge("tools", "agent")
 agent = workflow.compile()
 printed_messages = set()
 
+st.markdown("""
+    <style>
+
+
+    /* Target the text input area */
+    div[data-testid="stChatInput"] textarea {
+        border: 2px solid #888888 !important; /* Grey border for input */
+        border-radius: 10px !important;
+        outline: none !important; /* Remove focus outline */
+        background-color: #1e1e1e; /* Optional: Dark background */
+        color: white; /* Text color */
+    }
+
+    /* Style the send button */
+    div[data-testid="stChatInput"] button {
+        border: 2px solid #888888 !important; /* Grey border */
+        background-color: #888888 !important; /* Grey background */
+        color: black !important; /* Text color */
+        border-radius: 50% !important; /* Circular button */
+    }
+
+    /* Remove any residual red borders */
+    * {
+        border-color: #888888 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 st.title("WHaKBot")
 st.button("Take Screenshot")
 if "openai_model" not in st.session_state:

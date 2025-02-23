@@ -1,1 +1,7 @@
 .env
+.idea
+server/__pycache__/
+server/generated_video_code/
+server/generated_audio/
+server/media/
+server/screenshot/

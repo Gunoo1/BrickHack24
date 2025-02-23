@@ -149,10 +149,11 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-def render_block_latex(latex_expr):
+def reformat_latex(latex_expr):
     # Render block LaTeX
-    st.latex(latex_expr)
-    return ""  # Remove the original LaTeX from markdown output
+    print(f"Block LaTeX: {latex_expr}")
+    return f"${latex_expr}$"  # Remove the original LaTeX from markdown output
+
 def render_mixed_content(content):
 
         # Pattern to detect LaTeX expressions inside \( ... \)
@@ -160,21 +161,22 @@ def render_mixed_content(content):
     block_pattern = r'\\\[(.*?)\\\]'
 
     # First handle block LaTeX expressions
-    content = re.sub(block_pattern, lambda m: render_block_latex(m.group(1)), content)
+    content = re.sub(block_pattern, lambda m: reformat_latex(m.group(1)), content)
 
     # Then handle inline LaTeX expressions
-    parts = re.split(inline_pattern, content)
+    content = re.sub(inline_pattern, lambda m: reformat_latex(m.group(1)), content)
+    print(f"Block Content: {content}")
+    st.write(content)
 
-    for idx, part in enumerate(parts):
-        if idx % 2 == 0:
-            # Regular text
-            st.markdown(part, unsafe_allow_html=True)
-        else:
-            # Inline LaTeX expression
-            clean_part = part.strip()
-            st.latex(clean_part)
-
-    
+    # for idx, part in enumerate(parts):
+    #     if idx % 2 == 0:
+    #         # Regular text
+    #         st.markdown(part, unsafe_allow_html=True)
+    #     else:
+    #         # Inline LaTeX expression
+    #         clean_part = part.strip()
+    #         print(f"Inline LaTeX: {clean_part}")
+    #         st.write(f"${clean_part}$")
 
 
 recognizer = sr.Recognizer()

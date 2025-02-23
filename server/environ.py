@@ -1,6 +1,7 @@
 import os
 
+import dotenv
+
+
 def secrets():
-    os.environ['TAVILY_API_KEY'] = ""
-    os.environ[
-        'OPENAI_API_KEY'] = ""
+    dotenv.load_dotenv()

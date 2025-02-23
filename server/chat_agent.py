@@ -151,7 +151,6 @@ for message in st.session_state.messages:
 
 def reformat_latex(latex_expr):
     # Render block LaTeX
-    print(f"Block LaTeX: {latex_expr}")
     return f"${latex_expr}$"  # Remove the original LaTeX from markdown output
 
 def render_mixed_content(content):
@@ -165,19 +164,7 @@ def render_mixed_content(content):
 
     # Then handle inline LaTeX expressions
     content = re.sub(inline_pattern, lambda m: reformat_latex(m.group(1)), content)
-    print(f"Block Content: {content}")
     st.write(content)
-
-    # for idx, part in enumerate(parts):
-    #     if idx % 2 == 0:
-    #         # Regular text
-    #         st.markdown(part, unsafe_allow_html=True)
-    #     else:
-    #         # Inline LaTeX expression
-    #         clean_part = part.strip()
-    #         print(f"Inline LaTeX: {clean_part}")
-    #         st.write(f"${clean_part}$")
-
 
 recognizer = sr.Recognizer()
 wav_audio_data = st_audiorec()

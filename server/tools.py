@@ -16,6 +16,7 @@ import pyttsx3
 import time
 import subprocess
 from environ import secrets
+
 secrets()
 from generated_video_code import integral_visualization
 import fitz  # PyMuPDF
@@ -25,7 +26,8 @@ import av
 from reportlab.pdfgen import canvas
 from matplotlib import pyplot as plt
 
-image_summarizer_model = ChatOpenAI(model="gpt-4o-mini", temperature=.7, api_key = os.environ["OPENAI_API_KEY"])
+image_summarizer_model = ChatOpenAI(model="gpt-4o-mini", temperature=.7, api_key=os.environ["OPENAI_API_KEY"])
+
 
 def generate_math_summary(image_url):
     prompt = "Explain this math-related photo in detail. Be sure to list any important values than can be used to solve to problem in the photo."
@@ -35,6 +37,7 @@ def generate_math_summary(image_url):
                  {"type": "image_url", "image_url": {"url": image_url}, }])])
 
     return message.content
+
 
 # Function to encode a local image into data URL
 def local_image_to_data_url(image_path):
@@ -51,6 +54,7 @@ def local_image_to_data_url(image_path):
     # Construct the data URL
     return f"data:{mime_type};base64,{base64_encoded_data}"
 
+
 @tool("list_problem_solving_steps")
 def list_problem_solving_steps(problem_description):
     """
@@ -61,9 +65,11 @@ def list_problem_solving_steps(problem_description):
 
 @tool("take_screenshot")
 def take_screenshot(issue: str):
+
     """
-    Take a screenshot of the user's math problem and get a summary of the problem.
+    Take a screenshot of the user's math problem and get a summary of the problem. Use if the user requests help on a question that is on their screen
     """
+    print("abc")
     screenshot = ImageGrab.grab()
     # Save screenshot temporarily
     temp_image_path = r"screenshot/problem.png"
@@ -72,10 +78,9 @@ def take_screenshot(issue: str):
     # Save cropped version temporarily
     temp_cropped_path = r"screenshot/problem_cropped.png"
     cropped_image = crop_screenshot(temp_image_path)
-    cropped_image = PIL.Image.fromarray(cropped_image) # Convert from cv2 format to PIL
+    cropped_image = PIL.Image.fromarray(cropped_image)  # Convert from cv2 format to PIL
 
     cropped_image.save(temp_cropped_path)
-
 
     cropped_image_data_url = local_image_to_data_url(temp_cropped_path)
     print("ANALYZING IMAGE...")
@@ -84,13 +89,14 @@ def take_screenshot(issue: str):
 
 def crop_screenshot(image_path):
     screenshot = cv2.imread(image_path)
-    #Convert image to rgb
+    # Convert image to rgb
     screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGR2RGB)
     print(type(screenshot))
     plt.imshow(screenshot)
     plt.show()
     x, y, w, h = detect_red_rectangle(screenshot)
-    return screenshot[y:y+h, x:x+w]
+    return screenshot[y:y + h, x:x + w]
+
 
 def detect_red_rectangle(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
@@ -177,31 +183,31 @@ def add_audio_to_video(video_path, audio_path, output_path):
     try:
         print(f"Loading video from: {video_path}")
         video = VideoFileClip(video_path)
-        
+
         print(f"Loading audio from: {audio_path}")
         audio = AudioFileClip(audio_path)
-        
+
         # Create new video with audio
         print("Combining audio and video...")
         final_video = video.copy()
         final_video.audio = audio
-        
+
         # Write output
         final_video.write_videofile(
             output_path,
             temp_audiofile="temp-audio.m4a",
             remove_temp=True,
-            codec="libx264", 
+            codec="libx264",
             audio_codec="aac"
         )
-        
+
         # Clean up
         video.close()
         audio.close()
         final_video.close()
-        
+
         print("Successfully combined audio and video!")
-        
+
     except Exception as e:
         print(f"Error in add_audio_to_video: {str(e)}")
         # Make sure to clean up even if there's an error
@@ -213,10 +219,11 @@ def add_audio_to_video(video_path, audio_path, output_path):
         raise
 
 
-
 class writeScript(BaseModel):
     file_name: str = Field(description="The filename of the manim script you just made. It should be XXX.py")
-    script: str = Field(description="The script to write for generating the manim animation. Must be in proper python syntax")
+    script: str = Field(
+        description="The script to write for generating the manim animation. Must be in proper python syntax")
+
 
 @tool("write_script", args_schema=writeScript)
 def write_script(file_name: str, script: str):
@@ -228,7 +235,6 @@ def write_script(file_name: str, script: str):
     Also when making latex like Tex("if $\gcd(a, n) = 1$") add a r in front of the string like Tex(r"if $...")
 
   """
-
 
     print("HERE + WE WRITING")
     cd = os.getcwd()
@@ -243,24 +249,22 @@ def write_script(file_name: str, script: str):
     return f"File saved as filename {file_name}"
 
 
-
-
-
 class makeTTSExplanation(BaseModel):
     script: str = Field(description="The explanation script you will use as a voiceover for the video you just made")
-    output_file: str = Field(description="the file name for the .mp3 tts file. For the name, just do [thing your explaining].mp3. dont put the []")
+    output_file: str = Field(
+        description="the file name for the .mp3 tts file. For the name, just do [thing your explaining].mp3. dont put the []")
+
 
 @tool("make_tts_explanation", args_schema=makeTTSExplanation)
 def make_tts_explanation(script: str, output_file: str):
     """Create the text to speech explanation file for your manim video. Only input your explanation script in text and the output file"""
 
-
     engine = pyttsx3.init()
-    
+
     # Optional: Modify voice properties
     # engine.setProperty('rate', 150)    # Speed of speech
     # engine.setProperty('volume', 0.9)  # Volume (0.0 to 1.0)
-    
+
     # Save to file
 
     audio_path = f"generated_audio\\{output_file}"
@@ -269,8 +273,10 @@ def make_tts_explanation(script: str, output_file: str):
 
     return f"audio file saved as {audio_path}"
 
+
 class runScript(BaseModel):
-    file_name: str = Field(description="The filename of the manim script you just made. It MUST be the same as the one used in WriteScript")
+    file_name: str = Field(
+        description="The filename of the manim script you just made. It MUST be the same as the one used in WriteScript")
     script_class: str = Field(description="The main class of the script which contains the Scene.")
     audio_file: str = Field(description="The path to the audio file of the tts explanation you made")
 
@@ -289,7 +295,8 @@ def run_script(file_name: str, script_class: str, audio_file: str):
 
     try:
         print('a')
-        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,encoding='utf-8')
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                encoding='utf-8')
         print("The video was successfully generated!")
 
         # Prepare the data to post
@@ -314,9 +321,8 @@ def run_script(file_name: str, script_class: str, audio_file: str):
 
         data_to_post = base_name + f"/1080p60/" + script_class + "tts_exp" + ".mp4"
 
-
         data = {"filename": data_to_post}
-        response = requests.post(url = "http://127.0.0.1:5000/get_video", json=data)
+        response = requests.post(url="http://127.0.0.1:5000/get_video", json=data)
 
         if response.status_code == 200:
             print("Video served successfully")
@@ -332,8 +338,7 @@ def run_script(file_name: str, script_class: str, audio_file: str):
         print(str(e))
         return {"status": "error", "message": str(e)}
 
-    
 
 TAVILY_TOOL = TavilySearchResults(max_results=10, tavily_api_key=os.environ['TAVILY_API_KEY'])
 
-TOOLS = [TAVILY_TOOL,write_script, run_script, make_tts_explanation, handwrite_on_pdf, take_screenshot]
+TOOLS = [TAVILY_TOOL, write_script, run_script, make_tts_explanation, handwrite_on_pdf, take_screenshot]
